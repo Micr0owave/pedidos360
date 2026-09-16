@@ -1,0 +1,21 @@
+# VM ec2-mq   ->   docker compose -f compose.yml up -d
+# Management UI: http://<IP>:15672   (p360 / p360pass)
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: p360-rabbitmq
+    hostname: p360-rabbit
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./rabbitmq.conf:/etc/rabbitmq/conf.d/10-p360.conf:ro
+      - rabbit-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+volumes:
+  rabbit-data:

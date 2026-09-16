@@ -1,0 +1,42 @@
+server:
+  port: 8082
+spring:
+  application:
+    name: ms-pedidos360-catalog
+  datasource:
+    url: jdbc:h2:mem:catalog;MODE=Oracle;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  h2:
+    console:
+      enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Nota: el JwtDecoder personalizado (JwtDecoderConfig) hace la validacion real
+          # y acepta issuer v1.0 y v2.0. Estas propiedades quedan como documentacion.
+          jwk-set-uri: https://login.microsoftonline.com/${AZURE_TENANT_ID:726876d2-e741-443b-91af-5309677e4def}/discovery/v2.0/keys
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    cl.duoc.p360: DEBUG
+
+p360:
+  azure:
+    tenant-id: ${AZURE_TENANT_ID:726876d2-e741-443b-91af-5309677e4def}
+    api-client-id: ${API_CLIENT_ID:c7f6f983-e84b-4d1b-8f5a-da6dcac01435}

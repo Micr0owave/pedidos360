@@ -1,0 +1,68 @@
+# VM ec2-kafka  ->  docker compose -f compose.yml up -d
+# Importante: cambia KAFKA_HOST por la IP privada de la VM (o localhost si corres todo local)
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: p360-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports: ["2181:2181"]
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: p360-kafka
+    depends_on: [zookeeper]
+    ports: ["9092:9092"]
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://${KAFKA_HOST:-localhost}:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+
+  # Crea los tópicos con las particiones/políticas/retención que exige el caso y termina.
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: p360-kafka-init
+    depends_on: [kafka]
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo 'Esperando a Kafka...'
+        until kafka-topics --bootstrap-server kafka:29092 --list >/dev/null 2>&1; do sleep 3; done
+
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists \
+          --topic orders.events --partitions 3 --replication-factor 1 \
+          --config cleanup.policy=delete --config retention.ms=604800000
+
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists \
+          --topic audit.timeline --partitions 3 --replication-factor 1 \
+          --config cleanup.policy=compact,delete --config retention.ms=2592000000
+
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists \
+          --topic audit.timeline.DLT --partitions 3 --replication-factor 1 \
+          --config cleanup.policy=delete --config retention.ms=1209600000
+
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists \
+          --topic orders.events.DLT --partitions 3 --replication-factor 1 \
+          --config cleanup.policy=delete --config retention.ms=1209600000
+
+        echo '--- Topicos creados ---'
+        kafka-topics --bootstrap-server kafka:29092 --describe
+
+  # Opcional pero MUY util para capturas de evidencia
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: p360-kafka-ui
+    depends_on: [kafka]
+    ports: ["8090:8080"]
+    environment:
+      KAFKA_CLUSTERS_0_NAME: p360
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      DYNAMIC_CONFIG_ENABLED: "true"

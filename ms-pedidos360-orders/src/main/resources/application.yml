@@ -1,0 +1,85 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: ms-pedidos360-orders
+
+  datasource:
+    url: jdbc:h2:mem:orders;MODE=Oracle;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate.format_sql: true
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:p360}
+    password: ${SPRING_RABBITMQ_PASSWORD:p360pass}
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Nota: el JwtDecoder personalizado (JwtDecoderConfig) hace la validacion real
+          # y acepta issuer v1.0 y v2.0. Estas propiedades quedan como documentacion.
+          jwk-set-uri: https://login.microsoftonline.com/${AZURE_TENANT_ID:726876d2-e741-443b-91af-5309677e4def}/discovery/v2.0/keys
+
+p360:
+  azure:
+    tenant-id: ${AZURE_TENANT_ID:726876d2-e741-443b-91af-5309677e4def}
+    api-client-id: ${API_CLIENT_ID:c7f6f983-e84b-4d1b-8f5a-da6dcac01435}
+  catalog:
+    base-url: ${CATALOG_BASE_URL:http://localhost:8082}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    cl.duoc.p360: DEBUG
+---
+# Perfil ORACLE: activalo con SPRING_PROFILES_ACTIVE=oracle cuando tengas la BD lista
+spring:
+  config:
+    activate:
+      on-profile: oracle
+  datasource:
+    url: ${ORACLE_URL:jdbc:oracle:thin:@//localhost:1521/XEPDB1}
+    username: ${ORACLE_USER:p360}
+    password: ${ORACLE_PASSWORD:p360}
+    driver-class-name: oracle.jdbc.OracleDriver
+  jpa:
+    database-platform: org.hibernate.dialect.OracleDialect
+    hibernate:
+      ddl-auto: update

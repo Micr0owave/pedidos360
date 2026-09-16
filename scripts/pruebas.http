@@ -1,0 +1,84 @@
+### Archivo para la extension "REST Client" de VS Code.
+### Alternativa a Postman: abre este archivo y haz clic en "Send Request" sobre cada bloque.
+### La captura de pantalla de la respuesta sirve como evidencia.
+
+@bff = http://localhost:8080
+@orders = http://localhost:8081
+@catalog = http://localhost:8082
+### Cuando actives Azure AD, pega aqui el access_token:
+@token = PEGA_AQUI_EL_ACCESS_TOKEN
+
+### 1. Ver productos del catalogo
+GET {{catalog}}/api/catalog/products
+
+### 2. Crear un pedido (queda en CREADO y emite OrderCreated a Kafka + email.send a RabbitMQ)
+# @name crear
+POST {{orders}}/api/orders
+Content-Type: application/json
+
+{
+  "customerEmail": "cliente@duocuc.cl",
+  "items": [
+    { "productId": "P-001", "quantity": 2, "unitPrice": 8990 },
+    { "productId": "P-004", "quantity": 1, "unitPrice": 1500 }
+  ]
+}
+
+### 3. Guarda el id devuelto arriba y pegalo aqui
+@orderId = {{crear.response.body.id}}
+
+### 4. Ver el pedido
+GET {{orders}}/api/orders/{{orderId}}
+
+### 5. PRUEBA DE LA REGLA CLAVE: despachar sin aceptar -> debe responder 409
+PATCH {{orders}}/api/orders/{{orderId}}/status
+Content-Type: application/json
+
+{ "target": "DESPACHADO" }
+
+### 6. Aceptar (descuenta stock + encola kitchen.ticket e invoice.gen)
+PATCH {{orders}}/api/orders/{{orderId}}/status
+Content-Type: application/json
+
+{ "target": "ACEPTADO" }
+
+### 7. Verificar que el stock bajo
+GET {{catalog}}/api/catalog/products/P-001
+
+### 8. Preparar
+PATCH {{orders}}/api/orders/{{orderId}}/status
+Content-Type: application/json
+
+{ "target": "EN_PREPARACION" }
+
+### 9. Despachar (ahora si es valido)
+PATCH {{orders}}/api/orders/{{orderId}}/status
+Content-Type: application/json
+
+{ "target": "DESPACHADO" }
+
+### 10. Entregar (cierra el lead time)
+PATCH {{orders}}/api/orders/{{orderId}}/status
+Content-Type: application/json
+
+{ "target": "ENTREGADO" }
+
+### 11. KPIs desde Kafka
+GET http://localhost:8085/api/report/kpi/sales-by-hour
+
+###
+GET http://localhost:8085/api/report/kpi/lead-time
+
+###
+GET http://localhost:8085/api/report/kpi/active-states
+
+### 12. Timeline de auditoria del pedido
+GET http://localhost:8084/api/audit/timeline/{{orderId}}
+
+### 13. A traves del BFF, con token de Azure AD
+GET {{bff}}/api/orders
+Authorization: Bearer {{token}}
+
+### 14. Ver que rol reconoce el backend en tu token
+GET {{bff}}/api/me
+Authorization: Bearer {{token}}

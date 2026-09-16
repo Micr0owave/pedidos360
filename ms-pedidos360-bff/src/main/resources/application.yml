@@ -1,0 +1,45 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ms-pedidos360-bff
+  main:
+    allow-bean-definition-overriding: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Nota: el JwtDecoder personalizado (JwtDecoderConfig) hace la validacion real
+          # y acepta issuer v1.0 y v2.0. Estas propiedades quedan como documentacion.
+          jwk-set-uri: https://login.microsoftonline.com/${AZURE_TENANT_ID:726876d2-e741-443b-91af-5309677e4def}/discovery/v2.0/keys
+
+p360:
+  cors:
+    # Separar por coma. En EC2 agrega http://<IP_PUBLICA_APPS> o tu dominio.
+    allowed-origins: ${CORS_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
+  azure:
+    tenant-id: ${AZURE_TENANT_ID:726876d2-e741-443b-91af-5309677e4def}
+    api-client-id: ${API_CLIENT_ID:c7f6f983-e84b-4d1b-8f5a-da6dcac01435}
+  orders:
+    base-url: ${ORDERS_BASE_URL:http://localhost:8081}
+  catalog:
+    base-url: ${CATALOG_BASE_URL:http://localhost:8082}
+  audit:
+    base-url: ${AUDIT_BASE_URL:http://localhost:8084}
+  report:
+    base-url: ${REPORT_BASE_URL:http://localhost:8085}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    cl.duoc.p360: DEBUG

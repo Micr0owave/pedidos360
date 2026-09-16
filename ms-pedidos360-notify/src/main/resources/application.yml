@@ -1,0 +1,44 @@
+server:
+  port: 8083
+spring:
+  application:
+    name: ms-pedidos360-notify
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:p360}
+    password: ${SPRING_RABBITMQ_PASSWORD:p360pass}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 2s
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Nota: el JwtDecoder personalizado (JwtDecoderConfig) hace la validacion real
+          # y acepta issuer v1.0 y v2.0. Estas propiedades quedan como documentacion.
+          jwk-set-uri: https://login.microsoftonline.com/${AZURE_TENANT_ID:726876d2-e741-443b-91af-5309677e4def}/discovery/v2.0/keys
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    cl.duoc.p360: DEBUG
+
+p360:
+  azure:
+    tenant-id: ${AZURE_TENANT_ID:726876d2-e741-443b-91af-5309677e4def}
+    api-client-id: ${API_CLIENT_ID:c7f6f983-e84b-4d1b-8f5a-da6dcac01435}

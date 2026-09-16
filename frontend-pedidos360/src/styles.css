@@ -1,0 +1,122 @@
+/* ============================================================
+   Pedidos360 — sistema de diseño
+   Metáfora: el pase de cocina. Un pedido avanza por un riel de
+   estados y la regla del negocio es qué movimientos son legales.
+   Por eso el riel de estados es el elemento protagonista.
+   ============================================================ */
+
+:root {
+  /* Superficies */
+  --ink:        #11151c;   /* barra lateral, texto principal */
+  --ink-soft:   #2a3441;
+  --muted:      #5d6b7d;
+  --line:       #d7dde5;
+  --paper:      #eceff3;   /* fondo de la aplicación */
+  --surface:    #ffffff;
+
+  /* Señales de estado del pedido */
+  --signal:     #c2610a;   /* trabajo en curso */
+  --signal-bg:  #fdf1e3;
+  --jade:       #0d6b4f;   /* entregado / éxito */
+  --jade-bg:    #e5f2ed;
+  --clay:       #a5301c;   /* cancelado / bloqueado */
+  --clay-bg:    #fbeae7;
+  --steel:      #3f5a78;   /* creado / neutro */
+  --steel-bg:   #e8eef5;
+
+  /* Tipografía */
+  --display: 'Archivo', system-ui, sans-serif;
+  --body: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --radius: 6px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--display); line-height: 1.15; margin: 0 0 .5rem; }
+h1 { font-size: 1.75rem; font-weight: 800; letter-spacing: -.015em; }
+h2 { font-size: 1.15rem; font-weight: 600; }
+h3 { font-size: .95rem; font-weight: 600; }
+
+p { margin: 0 0 1rem; max-width: 62ch; }
+a { color: #14518c; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+/* --- Botones --- */
+.btn {
+  display: inline-flex; align-items: center; gap: .45rem;
+  padding: .55rem 1rem; border-radius: var(--radius);
+  border: 1px solid var(--ink); background: var(--ink); color: #fff;
+  font-weight: 500; cursor: pointer;
+  transition: background .12s ease;
+}
+.btn:hover:not(:disabled) { background: var(--ink-soft); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn-ghost:hover:not(:disabled) { background: #fff; border-color: var(--muted); }
+.btn-sm { padding: .35rem .7rem; font-size: .85rem; }
+
+/* --- Campos --- */
+.field { display: flex; flex-direction: column; gap: .3rem; }
+.field > span { font-size: .8rem; color: var(--muted); font-weight: 500; }
+input, select, textarea {
+  padding: .5rem .65rem; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--surface);
+}
+input:focus, select:focus { border-color: var(--muted); }
+
+/* --- Superficies --- */
+.panel {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 1.25rem 1.4rem; margin-bottom: 1.25rem;
+}
+.panel > h2 { margin-bottom: .75rem; }
+
+table { width: 100%; border-collapse: collapse; }
+th {
+  text-align: left; font-size: .78rem; font-weight: 600; color: var(--muted);
+  padding: .4rem .6rem .5rem; border-bottom: 1px solid var(--line);
+}
+td { padding: .7rem .6rem; border-bottom: 1px solid #eef1f5; vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+
+code, .mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: .85em; }
+
+/* --- Distintivo de estado --- */
+.status {
+  display: inline-block; padding: .2rem .55rem; border-radius: 3px;
+  font-size: .78rem; font-weight: 600; white-space: nowrap;
+}
+.status[data-s="CREADO"]         { background: var(--steel-bg);  color: var(--steel); }
+.status[data-s="ACEPTADO"]       { background: var(--signal-bg); color: var(--signal); }
+.status[data-s="EN_PREPARACION"] { background: var(--signal-bg); color: var(--signal); }
+.status[data-s="DESPACHADO"]     { background: var(--signal-bg); color: var(--signal); }
+.status[data-s="ENTREGADO"]      { background: var(--jade-bg);   color: var(--jade); }
+.status[data-s="CANCELADO"]      { background: var(--clay-bg);   color: var(--clay); }
+
+/* --- Mensajes --- */
+.alert { padding: .7rem .9rem; border-radius: var(--radius); border-left: 3px solid; margin-bottom: 1rem; }
+.alert-error { background: var(--clay-bg); border-color: var(--clay); color: #6f2114; }
+.alert-ok    { background: var(--jade-bg); border-color: var(--jade); color: #07503a; }
+
+.empty { color: var(--muted); padding: 1.5rem 0; }
+.hint { font-size: .85rem; color: var(--muted); }
+
+/* --- Métricas --- */
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.metric { background: var(--surface); padding: .9rem 1rem; }
+.metric b { display: block; font-family: var(--display); font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+.metric span { font-size: .8rem; color: var(--muted); }

@@ -1,0 +1,60 @@
+# VM ec2-apps  ->  docker compose -f compose.yml up -d --build
+# Antes: copia .env.example a .env y ajusta IPs/credenciales.
+x-common: &common
+  restart: unless-stopped
+  environment: &common-env
+    SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+    SPRING_RABBITMQ_HOST: ${MQ_HOST}
+    SPRING_RABBITMQ_PORT: "5672"
+    SPRING_RABBITMQ_USERNAME: ${MQ_USER}
+    SPRING_RABBITMQ_PASSWORD: ${MQ_PASS}
+    SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_HOST}:9092
+    AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+    API_CLIENT_ID: ${API_CLIENT_ID}
+
+services:
+  orders-svc:
+    <<: *common
+    build: ../../ms-pedidos360-orders
+    container_name: p360-orders
+    ports: ["8081:8081"]
+    environment:
+      <<: *common-env
+      CATALOG_BASE_URL: http://catalog-svc:8082
+
+  catalog-svc:
+    <<: *common
+    build: ../../ms-pedidos360-catalog
+    container_name: p360-catalog
+    ports: ["8082:8082"]
+
+  notify-svc:
+    <<: *common
+    build: ../../ms-pedidos360-notify
+    container_name: p360-notify
+    # no expone puerto publico: solo consume RabbitMQ
+
+  audit-svc:
+    <<: *common
+    build: ../../ms-pedidos360-audit
+    container_name: p360-audit
+    ports: ["8084:8084"]
+
+  report-svc:
+    <<: *common
+    build: ../../ms-pedidos360-report
+    container_name: p360-report
+    ports: ["8085:8085"]
+
+  bff:
+    <<: *common
+    build: ../../ms-pedidos360-bff
+    container_name: p360-bff
+    ports: ["8080:8080"]
+    depends_on: [orders-svc, catalog-svc, audit-svc, report-svc]
+    environment:
+      <<: *common-env
+      ORDERS_BASE_URL:  http://orders-svc:8081
+      CATALOG_BASE_URL: http://catalog-svc:8082
+      AUDIT_BASE_URL:   http://audit-svc:8084
+      REPORT_BASE_URL:  http://report-svc:8085

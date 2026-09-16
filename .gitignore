@@ -1,0 +1,23 @@
+# Build
+target/
+node_modules/
+dist/
+out-tsc/
+.angular/
+
+# Secretos y entorno
+.env
+*.pem
+
+# Logs
+*.log
+serve.log
+serve-error.log
+run.log
+run-error.log
+
+# Editores y sistema
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
