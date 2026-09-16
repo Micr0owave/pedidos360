@@ -2,39 +2,6 @@
 
 Sistema cloud-native de gestión de pedidos: Angular 18 con MSAL, microservicios Spring Boot tras un BFF, RabbitMQ para comandos, Kafka para eventos, y despliegue con Docker Compose sobre EC2 detrás de AWS API Gateway.
 
-## Por dónde empezar
-
-Si vuelves al proyecto después de un rato, lee **`docs/00-EMPIEZA-AQUI.md`**. Dice qué está hecho, qué falta y en qué orden avanzar.
-
-| Documento | Para qué sirve |
-|---|---|
-| `docs/00-EMPIEZA-AQUI.md` | Estado real del proyecto y plan de cierre |
-| `docs/CONFIG.md` | Todos los IDs, URLs y credenciales en un solo lugar |
-| `docs/MENSAJERIA.md` | Por qué está cada pieza: RabbitMQ, Kafka, BFF, Gateway |
-| `docs/ARQUITECTURA.md` | Diseño técnico y topologías |
-| `docs/AZURE-AD.md` | Configuración de Entra ID paso a paso |
-| `docs/GITHUB.md` | Publicar el repositorio |
-| `docs/EC2-DESPLIEGUE.md` | Las tres instancias y el frontend con Nginx |
-| `docs/AWS-API-GATEWAY.md` | HTTP API con JWT Authorizer |
-| `docs/EVIDENCIAS.md` | Checklist de capturas |
-| `docs/PRESENTACION.md` | Guion de la demostración y preguntas frecuentes |
-
-## Qué hay aquí
-
-| Carpeta | Qué es | Puerto |
-|---|---|---|
-| `frontend-pedidos360/` | Angular 18 con MSAL y guards por rol | 4200 |
-| `ms-pedidos360-bff/` | Punto único de entrada, valida JWT y enruta | 8080 |
-| `ms-pedidos360-orders/` | Pedidos, máquina de estados, produce a RabbitMQ y Kafka | 8081 |
-| `ms-pedidos360-catalog/` | Productos y stock | 8082 |
-| `ms-pedidos360-notify/` | Consume comandos RabbitMQ (email, cocina, boleta) | 8083 |
-| `ms-pedidos360-audit/` | Consume `audit.timeline` y persiste el historial | 8084 |
-| `ms-pedidos360-report/` | Consume `orders.events` y expone KPIs | 8085 |
-| `infra/mq/` | RabbitMQ con las 6 colas, 3 exchanges y bindings ya cargados | 5672 / 15672 |
-| `infra/kafka/` | Zookeeper + Kafka + creación automática de tópicos | 9092 / 8090 |
-| `infra/apps/` | Compose de las aplicaciones para la EC2 | — |
-| `scripts/` | Pruebas sin Postman y arranque local | — |
-
 El frontend incluye una pantalla en `/diagnostico` que muestra el access token con botón de copiar, lo decodifica en una tabla y chequea en vivo que los seis servicios respondan. Sirve para probar la API sin pelear con la pestaña Network y como evidencia durante la presentación.
 
 ## Arrancar en 5 minutos
