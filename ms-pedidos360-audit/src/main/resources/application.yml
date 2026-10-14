@@ -48,3 +48,21 @@ p360:
   azure:
     tenant-id: ${AZURE_TENANT_ID:726876d2-e741-443b-91af-5309677e4def}
     api-client-id: ${API_CLIENT_ID:c7f6f983-e84b-4d1b-8f5a-da6dcac01435}
+---
+# Perfil ORACLE (base de datos en AWS RDS u otra Oracle): SPRING_PROFILES_ACTIVE=docker,oracle
+spring:
+  config:
+    activate:
+      on-profile: oracle
+  datasource:
+    url: ${ORACLE_URL:jdbc:oracle:thin:@//localhost:1521/XEPDB1}
+    username: ${ORACLE_USER:p360}
+    password: ${ORACLE_PASSWORD:p360}
+    driver-class-name: oracle.jdbc.OracleDriver
+  jpa:
+    database-platform: org.hibernate.dialect.OracleDialect
+    hibernate:
+      ddl-auto: update
+  h2:
+    console:
+      enabled: false

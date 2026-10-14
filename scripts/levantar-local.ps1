@@ -24,13 +24,14 @@ try {
     Write-Host 'Esperando a que la infraestructura quede lista (40s)...'
     Start-Sleep -Seconds 40
 
-    foreach ($service in @('orders', 'catalog', 'notify', 'audit', 'report', 'bff')) {
+    foreach ($service in @('orders', 'catalog', 'notify', 'mqadmin', 'audit', 'report', 'bff')) {
         Start-Service $service
     }
 
     Write-Host ''
     Write-Host 'Servicios iniciando. Revisa los logs en ms-pedidos360-*/run.log'
     Write-Host 'Swagger orders : http://localhost:8081/swagger-ui.html'
+    Write-Host 'Swagger mqadmin: http://localhost:8086/swagger-ui.html'
     Write-Host 'RabbitMQ UI    : http://localhost:15672  (p360 / p360pass)'
     Write-Host 'Kafka UI       : http://localhost:8090'
 }

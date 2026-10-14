@@ -10,12 +10,9 @@ spring:
     password: ${SPRING_RABBITMQ_PASSWORD:p360pass}
     listener:
       simple:
-        acknowledge-mode: auto
-        default-requeue-rejected: false
-        retry:
-          enabled: true
-          max-attempts: 3
-          initial-interval: 2s
+        acknowledge-mode: manual         # cada consumidor hace ACK/NACK explicito (ver MessageAcknowledger)
+        default-requeue-rejected: false  # un rechazo va a la DLQ, no vuelve a la cola
+        prefetch: 10
   security:
     oauth2:
       resourceserver:
@@ -39,6 +36,28 @@ logging:
     cl.duoc.p360: DEBUG
 
 p360:
+  messaging:
+    # Unica fuente de verdad de los nombres de RabbitMQ (mismos valores en orders y mqadmin)
+    max-retries: 3   # reintentos ante errores recuperables antes de enviar a la DLQ
+    exchanges:
+      direct: cmd.direct
+      topic: cmd.topic
+      dead-letter: cmd.dead.dlx
+    email:
+      queue: q.cmd.email
+      dead-letter-queue: q.cmd.email.dlq
+      routing-key: email.send
+      topic-pattern: "email.*"
+    kitchen:
+      queue: q.cmd.kitchen
+      dead-letter-queue: q.cmd.kitchen.dlq
+      routing-key: kitchen.ticket
+      topic-pattern: "kitchen.#"
+    invoice:
+      queue: q.cmd.invoice
+      dead-letter-queue: q.cmd.invoice.dlq
+      routing-key: invoice.gen
+      topic-pattern: "invoice.*"
   azure:
     tenant-id: ${AZURE_TENANT_ID:726876d2-e741-443b-91af-5309677e4def}
     api-client-id: ${API_CLIENT_ID:c7f6f983-e84b-4d1b-8f5a-da6dcac01435}

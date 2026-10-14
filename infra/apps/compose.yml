@@ -11,6 +11,10 @@ x-common: &common
     SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_HOST}:9092
     AZURE_TENANT_ID: ${AZURE_TENANT_ID}
     API_CLIENT_ID: ${API_CLIENT_ID}
+    # Base de datos en AWS (solo se usa con el perfil "oracle", ver SPRING_PROFILES_ACTIVE)
+    ORACLE_URL: ${ORACLE_URL:-jdbc:oracle:thin:@//localhost:1521/XEPDB1}
+    ORACLE_USER: ${ORACLE_USER:-p360}
+    ORACLE_PASSWORD: ${ORACLE_PASSWORD:-p360}
 
 services:
   orders-svc:
@@ -33,6 +37,12 @@ services:
     build: ../../ms-pedidos360-notify
     container_name: p360-notify
     # no expone puerto publico: solo consume RabbitMQ
+
+  mqadmin-svc:
+    <<: *common
+    build: ../../ms-pedidos360-mqadmin
+    container_name: p360-mqadmin
+    ports: ["8086:8086"]
 
   audit-svc:
     <<: *common
@@ -58,3 +68,4 @@ services:
       CATALOG_BASE_URL: http://catalog-svc:8082
       AUDIT_BASE_URL:   http://audit-svc:8084
       REPORT_BASE_URL:  http://report-svc:8085
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:4200}
