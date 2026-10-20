@@ -46,6 +46,8 @@ class BffClients {
     @Bean RestClient catalogClient(@Value("${p360.catalog.base-url}") String u){ return RestClient.create(u); }
     @Bean RestClient auditClient(@Value("${p360.audit.base-url}") String u)    { return RestClient.create(u); }
     @Bean RestClient reportClient(@Value("${p360.report.base-url}") String u)  { return RestClient.create(u); }
+    @Bean RestClient mqadminClient(@Value("${p360.mqadmin.base-url}") String u){ return RestClient.create(u); }
+    @Bean RestClient notifyClient(@Value("${p360.notify.base-url}") String u)  { return RestClient.create(u); }
 }
 
 @RestController
@@ -57,14 +59,23 @@ class GatewayController {
     private final Map<String, RestClient> routes = new LinkedHashMap<>();
 
     GatewayController(RestClient ordersClient, RestClient catalogClient,
-                      RestClient auditClient, RestClient reportClient) {
+                      RestClient auditClient, RestClient reportClient,
+                      RestClient mqadminClient, RestClient notifyClient) {
         routes.put("/api/orders",  ordersClient);
         routes.put("/api/catalog", catalogClient);
         routes.put("/api/audit",   auditClient);
         routes.put("/api/report",  reportClient);
+        // Mensajeria (solo ADMIN, ver BffSecurity): administrador de RabbitMQ y apoyo de demostracion de notify
+        routes.put("/api/queues",    mqadminClient);
+        routes.put("/api/exchanges", mqadminClient);
+        routes.put("/api/bindings",  mqadminClient);
+        routes.put("/api/monitor",   mqadminClient);
+        routes.put("/api/notify",    notifyClient);
     }
 
-    @RequestMapping(value = {"/api/orders/**", "/api/catalog/**", "/api/audit/**", "/api/report/**"},
+    @RequestMapping(value = {"/api/orders/**", "/api/catalog/**", "/api/audit/**", "/api/report/**",
+                             "/api/queues/**", "/api/exchanges/**", "/api/bindings/**",
+                             "/api/monitor/**", "/api/notify/**"},
                     method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT,
                               RequestMethod.PATCH, RequestMethod.DELETE})
     public ResponseEntity<String> proxy(HttpServletRequest request,
@@ -141,6 +152,8 @@ class BffSecurity {
             .authorizeHttpRequests(a -> a
                 .requestMatchers("/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/api/report/**").hasRole("ADMIN")
+                .requestMatchers("/api/queues/**", "/api/exchanges/**", "/api/bindings/**",
+                                 "/api/monitor/**", "/api/notify/**").hasRole("ADMIN")
                 .requestMatchers("/api/audit/**").hasAnyRole("ADMIN", "AUDITOR")
                 .anyRequest().authenticated())
             .oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(converter())));

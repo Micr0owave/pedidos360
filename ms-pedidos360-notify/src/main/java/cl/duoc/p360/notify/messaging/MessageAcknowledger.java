@@ -28,16 +28,20 @@ public class MessageAcknowledger {
     private final RabbitTemplate rabbitTemplate;
     private final MessagingProperties props;
     private final IdempotencyGuard idempotency;
+    private final EventLog eventLog;
 
-    public MessageAcknowledger(RabbitTemplate rabbitTemplate, MessagingProperties props, IdempotencyGuard idempotency) {
+    public MessageAcknowledger(RabbitTemplate rabbitTemplate, MessagingProperties props,
+                               IdempotencyGuard idempotency, EventLog eventLog) {
         this.rabbitTemplate = rabbitTemplate;
         this.props = props;
         this.idempotency = idempotency;
+        this.eventLog = eventLog;
     }
 
     public void process(MessagingProperties.Route route, Object payload, Delivery d, Runnable work) throws IOException {
         if (idempotency.alreadyProcessed(d.messageId())) {
             log.warn("[IDEMPOTENCIA] messageId {} ya procesado en {}, se descarta", d.messageId(), route.queue());
+            eventLog.record(route.queue(), "DUPLICADO", "messageId ya procesado", d.correlationId());
             d.channel().basicAck(d.tag(), false);
             return;
         }
@@ -45,20 +49,24 @@ public class MessageAcknowledger {
         try {
             work.run();
             idempotency.markProcessed(d.messageId());
+            eventLog.record(route.queue(), "ACK", "procesado", d.correlationId());
             d.channel().basicAck(d.tag(), false);
         } catch (InvalidMessageException e) {
             log.error("[DLQ] mensaje invalido en {} -> {}. Motivo: {} | corr={} | contenido={}",
                     route.queue(), route.deadLetterQueue(), e.getMessage(), d.correlationId(), payload);
+            eventLog.record(route.queue(), "DLQ_INVALIDO", e.getMessage(), d.correlationId());
             d.channel().basicNack(d.tag(), false, false);
         } catch (RuntimeException e) {
             if (attempts < props.maxRetries()) {
                 log.warn("Error recuperable en {} (reintento {}/{}): {}",
                         route.queue(), attempts + 1, props.maxRetries(), e.getMessage());
+                eventLog.record(route.queue(), "REINTENTO", (attempts + 1) + "/" + props.maxRetries() + ": " + e.getMessage(), d.correlationId());
                 republish(route, payload, d, attempts + 1);
                 d.channel().basicAck(d.tag(), false);
             } else {
                 log.error("[DLQ] reintentos agotados en {} -> {}. Motivo: {} | corr={} | contenido={}",
                         route.queue(), route.deadLetterQueue(), e.getMessage(), d.correlationId(), payload);
+                eventLog.record(route.queue(), "DLQ_AGOTADO", e.getMessage(), d.correlationId());
                 d.channel().basicNack(d.tag(), false, false);
             }
         }

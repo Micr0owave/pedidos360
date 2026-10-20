@@ -1,91 +1,104 @@
-# Despliegue en AWS – Pedidos360
+# Despliegue en AWS Academy – Pedidos360 (paso a paso)
 
-Arquitectura (la del README):
+**Plan simple (una sola VM)**: RabbitMQ, Kafka y las 7 apps corren con Docker en **una** EC2. API Gateway le da una URL https. Sin Oracle: se usa H2 en memoria (perfil `docker`), así no dependes de RDS.
 
 ```
-Frontend Angular ──HTTPS──► API Gateway (HTTP API) ──► EC2 apps :8080 (BFF)
-                                                          │  red privada (misma VPC)
-                       ┌──────────────┬───────────────────┼────────────────┐
-                       ▼              ▼                   ▼                ▼
-                EC2 mq :5672     EC2 kafka :9092     RDS Oracle :1521   (orders, catalog,
-                (RabbitMQ)       (Kafka+Zookeeper)   (base de datos)     notify, mqadmin, audit, report)
+Frontend (tu PC, localhost:4200) ─► API Gateway (HTTP API, https) ─► EC2 :8080 (BFF) ─► orders/catalog/notify/mqadmin/... + RabbitMQ + Kafka
 ```
 
-> Este documento no pudo probarse contra tu cuenta de AWS: son los pasos y valores que el repo espera. Cada paso tiene su comprobación.
+## Limitaciones de AWS Academy que importan
+- Tienes ~US$100 de crédito. Si se acaba se pierde el laboratorio. **No uses NAT Gateway ni RDS** (siguen cobrando aunque cierres la sesión).
+- Al terminar la sesión (4 h por defecto, botón *Start Lab* la reinicia) las EC2 se **detienen** y su IP pública cambia. Los recursos siguen existiendo; *Reset* los borra todos.
+- No puedes crear usuarios/roles IAM: no hace falta, las EC2 no los necesitan.
+- Trabaja siempre en **us-east-1** (la región que abre el laboratorio).
+- Fuente de límites: [guía Learner Lab](https://josejuansanchez.org/iaw/taller-aws/resources/guia_aws_academy_learner_lab.pdf). Los tamaños de instancia permitidos pueden variar por curso: si `t3.large` no aparece, usa `t3.medium` y quita Kafka (ver Problemas).
 
-## 0. Antes de empezar
-- Región única para todo (ej. `us-east-1`) y **una sola VPC**.
-- Todos los servicios se hablan por **IP privada**. Solo se expone al exterior: API Gateway → BFF (8080).
+## Paso 1 – Entrar al laboratorio
+1. Canvas/AWS Academy → tu curso → **Módulos → Learner Lab** → **Start Lab**. Espera el círculo verde.
+2. Pulsa **AWS** (abre la consola). Arriba a la derecha confirma región **N. Virginia (us-east-1)**.
 
-## 1. Security Groups (el 80 % de los "no conecta" está aquí)
+## Paso 2 – Security Group
+EC2 → *Security Groups* → **Create**: nombre `sg-p360`, VPC por defecto. Reglas de entrada:
 
-| SG | Entrada permitida |
-|---|---|
-| `sg-apps` (EC2 apps) | 22 desde tu IP · 8080 desde `0.0.0.0/0` (lo usa API Gateway) · 8086 desde tu IP (mqadmin) |
-| `sg-mq` (EC2 mq) | 22 y 15672 desde tu IP · **5672 desde `sg-apps`** |
-| `sg-kafka` (EC2 kafka) | 22 desde tu IP · **9092 desde `sg-apps`** |
-| `sg-rds` (RDS) | **1521 desde `sg-apps`** (no abrir al mundo; RDS "Public access: No") |
+| Puerto | Origen | Para qué |
+|---|---|---|
+| 22 | My IP | SSH |
+| 8080 | 0.0.0.0/0 | BFF (lo usa API Gateway) |
+| 15672 | My IP | consola RabbitMQ (la presentación) |
+| 8086 | My IP | Swagger de mqadmin (opcional) |
 
-## 2. Base de datos (RDS Oracle)
-1. RDS → Create database → **Oracle** (SE2, *License included*), plantilla Dev/Test, `db.t3.medium` o similar.
-2. *Initial database name*: `ORCL`. Usuario maestro y contraseña: anótalos.
-3. Misma VPC, `sg-rds`, Public access **No**. Tarda 10–20 minutos.
-4. Copia el **Endpoint** (`xxxx.xxxx.us-east-1.rds.amazonaws.com`).
-5. En `infra/apps/.env` de la EC2 apps:
-   ```
-   SPRING_PROFILES_ACTIVE=docker,oracle
-   ORACLE_URL=jdbc:oracle:thin:@//<ENDPOINT>:1521/ORCL
-   ORACLE_USER=<usuario maestro>
-   ORACLE_PASSWORD=<contraseña>
-   ```
-   Con el perfil `oracle`, orders, catalog, audit y report crean sus tablas `P360_*` solas (`ddl-auto: update`). Sin ese perfil usan H2 en memoria.
-> RDS Oracle no entra en la capa gratuita. Si tu curso usa Oracle Autonomous con *wallet*, la URL cambia: avísame y la adapto.
+Los puertos internos (5672, 9092, 8081…) funcionan entre contenedores y no se abren.
 
-## 3. EC2 de RabbitMQ y de Kafka
-En cada una (Amazon Linux 2023, `t3.small`): `sudo dnf install -y docker git && sudo systemctl enable --now docker`, instala el plugin compose y clona el repo.
+## Paso 3 – Lanzar la EC2
+EC2 → **Launch instance**:
+- Nombre `p360`, AMI **Amazon Linux 2023**, tipo **t3.large** (8 GB: son 7 Java + RabbitMQ + Kafka).
+- Key pair: *Create new* → `vockey` ya existe en Academy; úsala y descarga el `.pem` desde *AWS Details* del laboratorio si no lo tienes.
+- Security group: `sg-p360`. Disco 30 GiB. **Launch**.
+- EC2 → *Elastic IPs* → **Allocate** → **Associate** a `p360` (la IP pública ya no cambia al reiniciar el laboratorio).
+
+## Paso 4 – Instalar Docker y levantar todo
+Conéctate (EC2 → instancia → **Connect → EC2 Instance Connect**, no necesitas el .pem):
 ```bash
-# EC2 mq
-docker compose -f infra/mq/compose.yml up -d            # consola: http://<IP-mq>:15672  (p360 / p360pass)
-# EC2 kafka  (KAFKA_HOST = IP PRIVADA de esta misma VM)
-KAFKA_HOST=<IP-privada-kafka> docker compose -f infra/kafka/compose.yml up -d
-```
-Comprobación: en la consola de RabbitMQ aparecen `cmd.direct`, `cmd.topic`, `cmd.dead.dlx` y las 6 colas; en Kafka-UI los 4 tópicos.
+sudo dnf install -y docker git
+sudo systemctl enable --now docker
+sudo mkdir -p /usr/local/lib/docker/cli-plugins
+sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+sudo usermod -aG docker ec2-user && newgrp docker
 
-## 4. EC2 de las aplicaciones
-Usa `t3.medium` (4 GB): son 6 Spring Boot en una máquina; con 2 GB se queda sin memoria.
+git clone -b ep3-rabbitmq-aws https://github.com/Micr0owave/pedidos360.git && cd pedidos360
+PRIV=$(hostname -I | awk '{print $1}'); echo $PRIV          # IP privada
+
+docker compose -f infra/mq/compose.yml up -d
+KAFKA_HOST=$PRIV docker compose -f infra/kafka/compose.yml up -d
+
+cd infra/apps && cp .env.example .env
+sed -i "s/^MQ_HOST=.*/MQ_HOST=$PRIV/; s/^KAFKA_HOST=.*/KAFKA_HOST=$PRIV/; s/^SPRING_PROFILES_ACTIVE=.*/SPRING_PROFILES_ACTIVE=docker/" .env
+nano .env          # revisa AZURE_TENANT_ID, API_CLIENT_ID y CORS_ORIGINS=http://localhost:4200
+export COMPOSE_PARALLEL_LIMIT=1
+docker compose up -d --build                              # tarda 10-15 min
+```
+**Comprobación**: `http://<ElasticIP>:15672` (p360 / p360pass) muestra colas y exchanges; `curl http://localhost:8080/actuator/health` responde UP.
+
+## Paso 5 – API Gateway (el "gateway")
+1. Consola → **API Gateway** → **Create API** → **HTTP API → Build**.
+2. *Integrations → Add integration*: **HTTP**, método `ANY`, URL `http://<ElasticIP>:8080/{proxy}`.
+3. *Configure routes*: método `ANY`, recurso `/{proxy+}`, apuntando a esa integración.
+4. Stage `$default`, *auto-deploy* activado. **Create**.
+5. Copia el **Invoke URL** (`https://abc123.execute-api.us-east-1.amazonaws.com`).
+6. **No actives CORS en API Gateway**: ya lo hace el BFF.
+7. Prueba: `curl <Invoke URL>/actuator/health` debe dar `UP`.
+
+## Paso 6 – Frontend contra AWS
+Azure AD solo acepta redirect `https` o `http://localhost`, así que para la presentación corre el frontend en tu PC:
+1. En `frontend-pedidos360/src/environments/environment.ts` pon `apiBaseUrl` = Invoke URL.
+2. `npm ci && npx ng serve` → `http://localhost:4200`.
+3. `CORS_ORIGINS` en la EC2 ya incluye `http://localhost:4200`.
+
+## Paso 7 – Rol CLIENTE (usuario sin admin) en Azure
+Portal Azure → **Microsoft Entra ID → App registrations → la app de la API** (`API_CLIENT_ID`):
+1. **App roles → Create app role**: Display name `Cliente`, Allowed member types **Users/Groups**, Value `Cliente`, activar → Apply. (Si ya existe `Admin`, queda junto a él.)
+2. **Entra ID → Enterprise applications →** la misma app → **Users and groups → Add user/group** → elige un usuario de prueba → rol **Cliente** → Assign. (Crea el usuario antes en *Users → New user*.)
+3. Tu usuario actual debe seguir con el rol `Admin`.
+4. Cierra sesión en el frontend e ingresa con el usuario cliente: el menú muestra solo lo permitido (sin Mensajería ni Reportes/Auditoría) y las rutas de admin devuelven 403.
+5. Ingresa de nuevo como admin: la barra lateral muestra `Admin` y aparece **Mensajería**.
+
+## Paso 8 – Comprobación de punta a punta
 ```bash
-cd infra/apps && cp .env.example .env && nano .env      # rellena todas las líneas
-export COMPOSE_PARALLEL_LIMIT=1                          # construye de a un servicio (menos memoria)
-docker compose up -d --build
+bash scripts/verificar-aws.sh <IP-privada> <IP-privada> - <invoke-url>
 ```
-Valores clave de `.env`: `MQ_HOST` e `KAFKA_HOST` = **IP privada** de cada VM, `AZURE_TENANT_ID`, `API_CLIENT_ID`, `ORACLE_*` y `CORS_ORIGINS` (ver paso 6).
+(si el script pide endpoint RDS, pásale un guion; la comprobación de BD se omite.) Luego en el frontend: `/diagnostico` en verde → crear pedido hasta ENTREGADO → `docker logs p360-notify` muestra `[EMAIL]`, `[COCINA]`, `[BOLETA]`.
 
-## 5. API Gateway
-1. API Gateway → **HTTP API** → Build.
-2. Integración: *HTTP* → `http://<IP-publica-EC2-apps>:8080/{proxy}` (usa una Elastic IP para que no cambie al reiniciar).
-3. Ruta: `ANY /{proxy+}`. Stage `$default` con auto-deploy.
-4. **No actives CORS en el gateway**: ya lo maneja el BFF (`CORS_ORIGINS`); activar ambos duplica las cabeceras y el navegador falla.
-5. Copia el *Invoke URL* (`https://abc123.execute-api.us-east-1.amazonaws.com`).
-
-## 6. Frontend y Azure AD
-- Azure AD **solo acepta redirect URIs `https` o `http://localhost`**. No sirve `http://<IP-EC2>`.
-- Opción simple para la presentación: correr el frontend en tu PC contra AWS. En `frontend-pedidos360/src/environments/environment.ts` pon `apiBaseUrl` = *Invoke URL*, y `CORS_ORIGINS` debe incluir `http://localhost:4200`. Luego `npm ci && npx ng serve`.
-- Opción desplegada: S3 + CloudFront (HTTPS) con `ng build --configuration production`. Edita antes `environment.prod.ts` (`redirectUri`, `postLogoutRedirectUri`, `apiBaseUrl`), agrega esa URL en Azure AD → App registration del frontend → Authentication → *Single-page application*, y ponla en `CORS_ORIGINS`.
-
-## 7. Comprobación de punta a punta
-```bash
-bash scripts/verificar-aws.sh <IP-privada-mq> <IP-privada-kafka> <endpoint-rds> <invoke-url>
-```
-Luego, en el frontend: inicia sesión → pantalla `/diagnostico` (token + seis servicios en verde) → crea un pedido y llévalo a ENTREGADO → en `notify` aparecen `[EMAIL]`, `[COCINA]`, `[BOLETA]` (`docker logs p360-notify`).
+## Cada vez que reinicias el laboratorio
+Start Lab → las EC2 arrancan solas con la misma Elastic IP. Entra por SSH y: `cd pedidos360/infra/mq && docker compose up -d`, igual en `infra/kafka` (con `KAFKA_HOST`) y `infra/apps`. (Los contenedores tienen `restart` solo si lo definiste; revisa con `docker ps`.) H2 es en memoria: los datos se pierden al reiniciar apps.
 
 ## Problemas típicos
 | Síntoma | Causa probable |
 |---|---|
-| `Connection refused` a RabbitMQ/Kafka | Falta la regla de `sg-mq`/`sg-kafka` desde `sg-apps`, o `MQ_HOST`/`KAFKA_HOST` con IP pública |
-| Kafka conecta pero falla al producir | `KAFKA_HOST` de la VM de Kafka no es su IP privada (advertised listener) |
-| `ORA-12541` / timeout al arrancar | `sg-rds` no permite 1521 desde `sg-apps`, o endpoint mal copiado |
-| `ORA-01017` | usuario/clave incorrectos; el servicio (`ORCL`) debe coincidir con el *Initial database name* |
-| 401 desde el BFF | token con otra audiencia/versión: revisa `/api/me` y `AZURE_TENANT_ID`/`API_CLIENT_ID` |
-| 403 en `/api/report` o mqadmin | el usuario no tiene el App Role `ADMIN` en Azure AD |
-| Error CORS en el navegador | la URL del frontend no está en `CORS_ORIGINS`, o hay CORS activo también en API Gateway |
-| Un contenedor se reinicia solo | poca memoria: usa `t3.medium` y `COMPOSE_PARALLEL_LIMIT=1` |
+| No abre `:15672` o `:8080` | regla de `sg-p360` falta, o tu IP cambió (actualiza *My IP*) |
+| Contenedor se reinicia solo | poca memoria: `t3.large`, `COMPOSE_PARALLEL_LIMIT=1`; con `t3.medium` apaga Kafka y los servicios audit/report |
+| Kafka conecta pero falla al producir | `KAFKA_HOST` no es la IP privada de la VM |
+| 401 en el BFF | revisa `AZURE_TENANT_ID` / `API_CLIENT_ID` y `/api/me` |
+| 403 en Mensajería/Reportes | el usuario no tiene el rol `Admin` asignado en *Enterprise applications* |
+| Error CORS | URL del frontend no está en `CORS_ORIGINS`, o hay CORS activo también en API Gateway |
+| Quieres Oracle | RDS Oracle puede estar restringido en Academy y cobra aunque cierres sesión; usa `SPRING_PROFILES_ACTIVE=docker,oracle` y `ORACLE_*` solo si tu profesor lo exige |

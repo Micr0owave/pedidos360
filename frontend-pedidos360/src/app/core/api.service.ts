@@ -20,6 +20,11 @@ export interface MeResponse {
   authorities?: string[];
 }
 
+export interface QueueSummary { name: string; messages: number; ready: number; unacked: number; consumers: number; deadLetter: boolean; }
+export interface PeekedMessage { routingKey: string; redelivered: boolean; payload: string; }
+export interface MqEvent { time: string; queue: string; result: string; reason: string; correlationId: string; }
+export type MqScenario = 'ok' | 'invalid' | 'transient' | 'duplicate';
+
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private http = inject(HttpClient);
@@ -61,4 +66,16 @@ export class ApiService {
     const qs = new URLSearchParams(params).toString();
     return this.http.get<any[]>(`${this.base}/api/audit/events${qs ? '?' + qs : ''}`);
   }
+
+  // Mensajeria (solo Admin): RabbitMQ y consumidor de notify
+  mqQueues(): Observable<QueueSummary[]> { return this.http.get<QueueSummary[]>(`${this.base}/api/monitor/queues`); }
+  mqPeek(name: string, count = 5): Observable<PeekedMessage[]> {
+    return this.http.get<PeekedMessage[]>(`${this.base}/api/monitor/queues/${name}/messages?count=${count}`);
+  }
+  mqEvents(): Observable<MqEvent[]> { return this.http.get<MqEvent[]>(`${this.base}/api/notify/events`); }
+  mqTest(queue: string, mode: MqScenario): Observable<unknown> {
+    return this.http.post(`${this.base}/api/notify/test`, { queue, mode });
+  }
+  mqCreateQueue(name: string): Observable<unknown> { return this.http.post(`${this.base}/api/queues`, { name }); }
+  mqDeleteQueue(name: string): Observable<unknown> { return this.http.delete(`${this.base}/api/queues/${name}`); }
 }

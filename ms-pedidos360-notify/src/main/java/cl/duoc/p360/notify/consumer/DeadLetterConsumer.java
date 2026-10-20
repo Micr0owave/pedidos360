@@ -7,14 +7,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 /**
  * Consumidor de las DLQ: solo registra el mensaje muerto (evidencia de DLQ) y lo confirma.
  * Con acknowledge-mode manual hay que hacer ACK explicito tambien aqui.
+ * Solo se activa con p360.messaging.drain-dlq=true: por defecto los mensajes muertos se quedan en la DLQ
+ * para poder verlos en la consola de RabbitMQ y en el frontend.
  */
 @Component
+@ConditionalOnProperty(name = "p360.messaging.drain-dlq", havingValue = "true")
 public class DeadLetterConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(DeadLetterConsumer.class);

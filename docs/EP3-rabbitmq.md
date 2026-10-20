@@ -48,4 +48,13 @@ El administrador se prueba con `scripts/pruebas.http` (casos 15 al 22) o en `htt
 - Los reintentos son inmediatos (sin espera); en produccion se usaria una cola de retardo con TTL.
 - Si una cola ya existe con otros argumentos, RabbitMQ rechaza redeclararla (PRECONDITION_FAILED); el administrador lo responde como 409.
 - Borrar un exchange inexistente responde 204: RabbitMQ lo trata como exito.
-- `mqadmin` no esta detras del BFF: se accede directo por el puerto 8086 con un token de rol ADMIN.
+- `mqadmin` y las pruebas de notify tambien se acceden por el BFF (`/api/queues`, `/api/exchanges`, `/api/bindings`, `/api/monitor`, `/api/notify`), solo rol ADMIN.
+- Por defecto `p360.messaging.drain-dlq=false`: nadie consume las DLQ, asi los mensajes muertos siguen visibles en RabbitMQ y en el frontend. Con `true` se vacian y se loguean.
+
+## Pantalla Mensajeria (frontend, solo Admin)
+Para la presentacion, todo se ve sin abrir RabbitMQ:
+- **Escenarios**: botones que envian un mensaje a `email`/`kitchen`/`invoice`: OK (ACK), invalido (-> DLQ), transitorio (reintentos -> DLQ), duplicado (idempotencia).
+- **Colas**: mensajes, listos, sin ack, consumidores; las DLQ con mensajes se resaltan. Crear y eliminar colas (admin REST).
+- **Ver mensajes**: muestra el contenido de una cola sin consumirlo.
+- **Eventos del consumidor**: ACK, DUPLICADO, REINTENTO, DLQ_INVALIDO, DLQ_AGOTADO (equivale a la captura del log).
+Se actualiza cada 3 s.

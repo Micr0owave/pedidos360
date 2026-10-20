@@ -12,6 +12,7 @@ import cl.duoc.p360.notify.config.MessagingProperties.Route;
 import cl.duoc.p360.notify.exception.InvalidMessageException;
 import cl.duoc.p360.notify.exception.TransientProcessingException;
 import cl.duoc.p360.notify.messaging.Delivery;
+import cl.duoc.p360.notify.messaging.EventLog;
 import cl.duoc.p360.notify.messaging.IdempotencyGuard;
 import cl.duoc.p360.notify.messaging.MessageAcknowledger;
 import com.rabbitmq.client.Channel;
@@ -27,6 +28,7 @@ class MessageAcknowledgerTest {
     private final Route route = new Route("q", "q.dlq", "rk", "rk.*");
     private RabbitTemplate rabbitTemplate;
     private Channel channel;
+    private final EventLog eventLog = new EventLog();
     private MessageAcknowledger acknowledger;
 
     @BeforeEach
@@ -34,7 +36,7 @@ class MessageAcknowledgerTest {
         rabbitTemplate = mock(RabbitTemplate.class);
         channel = mock(Channel.class);
         MessagingProperties props = new MessagingProperties(new Exchanges("direct", "topic", "dlx"), 3, route, route, route);
-        acknowledger = new MessageAcknowledger(rabbitTemplate, props, new IdempotencyGuard());
+        acknowledger = new MessageAcknowledger(rabbitTemplate, props, new IdempotencyGuard(), eventLog);
     }
 
     private Delivery delivery(String messageId, Integer retries) {
@@ -60,6 +62,7 @@ class MessageAcknowledgerTest {
         acknowledger.process(route, "m", delivery("id2", null), () -> { throw new InvalidMessageException("mal"); });
         verify(channel).basicNack(TAG, false, false);
         verify(channel, never()).basicAck(eq(TAG), eq(false));
+        org.junit.jupiter.api.Assertions.assertEquals("DLQ_INVALIDO", eventLog.recent().get(0).result());
     }
 
     @Test

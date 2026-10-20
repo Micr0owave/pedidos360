@@ -39,6 +39,7 @@ p360:
   messaging:
     # Unica fuente de verdad de los nombres de RabbitMQ (mismos valores en orders y mqadmin)
     max-retries: 3   # reintentos ante errores recuperables antes de enviar a la DLQ
+    drain-dlq: false # true = notify consume y borra los mensajes de las DLQ (solo log); false = quedan visibles
     exchanges:
       direct: cmd.direct
       topic: cmd.topic
