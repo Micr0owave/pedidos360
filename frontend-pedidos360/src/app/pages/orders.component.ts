@@ -36,9 +36,12 @@ import { ApiService, Order, OrderStatus, Product } from '../core/api.service';
           <span>Correo del cliente</span>
           <input type="email" [(ngModel)]="customerEmail" name="customerEmail" placeholder="cliente@duocuc.cl">
         </label>
-        <button type="button" class="btn" (click)="create()" [disabled]="creando()">
+        <button type="button" class="btn" (click)="create()" [disabled]="creando() || !emailValido()">
           {{ creando() ? 'Creando…' : 'Crear pedido' }}
         </button>
+        <span class="hint" *ngIf="customerEmail && !emailValido()" style="color:var(--clay)">
+          Correo inválido
+        </span>
       </div>
     </section>
 
@@ -143,6 +146,12 @@ export class OrdersComponent implements OnInit {
 
   terminal(s: OrderStatus): boolean {
     return (this.grafo[s] ?? []).length === 0;
+  }
+
+  emailValido(): boolean {
+    const v = (this.customerEmail || '').trim();
+    if (!v) return true; // opcional: si vacío, no bloquea
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   }
 
   load(): void {

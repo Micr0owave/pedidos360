@@ -26,7 +26,7 @@ El perfil `local` desactiva la validación de JWT, así puedes probar todo el fl
 Después:
 
 ```bash
-bash scripts/prueba_flujo.sh
+bash scripts/prueba-flujo.sh
 ```
 
 En Windows también puedes ejecutarlo directamente desde PowerShell, sin WSL:
