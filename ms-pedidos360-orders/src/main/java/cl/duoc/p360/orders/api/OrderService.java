@@ -2,6 +2,7 @@ package cl.duoc.p360.orders.api;
 
 import cl.duoc.p360.orders.domain.*;
 import cl.duoc.p360.orders.msg.CommandPublisher;
+import cl.duoc.p360.orders.msg.CommandType;
 import cl.duoc.p360.orders.msg.EventEnvelope;
 import cl.duoc.p360.orders.msg.EventPublisher;
 import cl.duoc.p360.orders.repo.OrderRepository;
@@ -67,7 +68,7 @@ public class OrderService {
                 EventEnvelope.of("OrderCreated", order.getId(), actorId, snapshot(order)));
 
         // Comando -> RabbitMQ: confirmar al cliente por email
-        commands.sendDirect("email.send",
+        commands.sendDirect(CommandType.EMAIL,
                 EventEnvelope.of("SendOrderConfirmationEmail", order.getId(), actorId,
                         Map.of("orderId", order.getId(),
                                "to", String.valueOf(order.getCustomerEmail()),
@@ -107,24 +108,24 @@ public class OrderService {
             case ACEPTADO -> {
                 // El stock decrece al aceptar (regla del caso)
                 order.getItems().forEach(i -> catalog.decreaseStock(i.getProductId(), i.getQuantity()));
-                commands.sendDirect("kitchen.ticket",
+                commands.sendDirect(CommandType.KITCHEN,
                         EventEnvelope.of("PrintKitchenTicket", corr, actorId, snapshot(order)));
-                commands.sendDirect("invoice.gen",
+                commands.sendDirect(CommandType.INVOICE,
                         EventEnvelope.of("GenerateInvoice", corr, actorId, snapshot(order)));
             }
-            case EN_PREPARACION -> commands.sendTopic("kitchen.ticket.thermal",
+            case EN_PREPARACION -> commands.sendTopic(CommandType.KITCHEN, "thermal",
                         EventEnvelope.of("PrintThermalTicket", corr, actorId, snapshot(order)));
-            case DESPACHADO -> commands.sendTopic("email.send.high",
+            case DESPACHADO -> commands.sendTopic(CommandType.EMAIL, "high",
                         EventEnvelope.of("NotifyDispatch", corr, actorId,
                                 Map.of("orderId", corr, "to", String.valueOf(order.getCustomerEmail()))));
             case ENTREGADO -> {
-                commands.sendTopic("invoice.gen.pdf",
+                commands.sendTopic(CommandType.INVOICE, "pdf",
                         EventEnvelope.of("GenerateInvoicePdf", corr, actorId, snapshot(order)));
-                commands.sendDirect("email.send",
+                commands.sendDirect(CommandType.EMAIL,
                         EventEnvelope.of("NotifyDelivered", corr, actorId,
                                 Map.of("orderId", corr, "to", String.valueOf(order.getCustomerEmail()))));
             }
-            case CANCELADO -> commands.sendDirect("email.send",
+            case CANCELADO -> commands.sendDirect(CommandType.EMAIL,
                         EventEnvelope.of("NotifyCancelled", corr, actorId,
                                 Map.of("orderId", corr, "to", String.valueOf(order.getCustomerEmail()))));
             default -> { }

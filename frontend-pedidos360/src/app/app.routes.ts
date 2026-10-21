@@ -34,6 +34,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/audit.component').then(m => m.AuditComponent)
   },
   {
+    path: 'mensajeria',
+    canActivate: [MsalGuard, roleGuard(['Admin'])],
+    loadComponent: () => import('./pages/mensajeria.component').then(m => m.MensajeriaComponent)
+  },
+  {
     path: 'diagnostico',
     canActivate: [MsalGuard],
     loadComponent: () => import('./pages/diagnostico.component').then(m => m.DiagnosticoComponent)

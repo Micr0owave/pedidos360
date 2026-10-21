@@ -15,30 +15,56 @@
             "outputPath": "dist/frontend-pedidos360",
             "index": "src/index.html",
             "browser": "src/main.ts",
-            "polyfills": ["zone.js"],
+            "polyfills": [
+              "zone.js"
+            ],
             "tsConfig": "tsconfig.app.json",
             "assets": [],
-            "styles": ["src/styles.css"]
+            "styles": [
+              "src/styles.css"
+            ]
           },
           "configurations": {
             "production": {
-              "budgets": [{ "type": "initial", "maximumWarning": "1MB", "maximumError": "2MB" }],
-              "outputHashing": "all"
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1MB",
+                  "maximumError": "2MB"
+                }
+              ],
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ]
             },
-            "development": { "optimization": false, "extractLicenses": false, "sourceMap": true }
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
           },
           "defaultConfiguration": "production"
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
-            "production": { "buildTarget": "frontend-pedidos360:build:production" },
-            "development": { "buildTarget": "frontend-pedidos360:build:development" }
+            "production": {
+              "buildTarget": "frontend-pedidos360:build:production"
+            },
+            "development": {
+              "buildTarget": "frontend-pedidos360:build:development"
+            }
           },
           "defaultConfiguration": "development"
         }
       }
     }
   },
-  "cli": { "analytics": false }
+  "cli": {
+    "analytics": false
+  }
 }

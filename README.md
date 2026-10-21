@@ -26,7 +26,7 @@ El perfil `local` desactiva la validación de JWT, así puedes probar todo el fl
 Después:
 
 ```bash
-bash scripts/prueba_flujo.sh
+bash scripts/prueba-flujo.sh
 ```
 
 En Windows también puedes ejecutarlo directamente desde PowerShell, sin WSL:
@@ -36,3 +36,11 @@ En Windows también puedes ejecutarlo directamente desde PowerShell, sin WSL:
 ```
 
 Ese script crea un pedido, intenta despacharlo sin aceptarlo (debe fallar con 409), recorre el flujo válido completo y consulta los KPIs. Es la evidencia más rápida de que todo funciona.
+
+## Mensajeria RabbitMQ (EP3)
+
+Los nombres de colas/exchanges viven en `application.yml`, `notify` consume con ACK manual y DLQ, y `ms-pedidos360-mqadmin` (puerto 8086) administra colas, exchanges y bindings por REST. Detalle y mapa contra la pauta en [`docs/EP3-rabbitmq.md`](docs/EP3-rabbitmq.md).
+
+## Despliegue en AWS
+
+Pasos completos (Security Groups, RDS Oracle, EC2, API Gateway, Azure AD) en [`docs/AWS-despliegue.md`](docs/AWS-despliegue.md). Para comprobar la conectividad: `bash scripts/verificar-aws.sh <ip-mq> <ip-kafka> <endpoint-rds> <invoke-url>`.

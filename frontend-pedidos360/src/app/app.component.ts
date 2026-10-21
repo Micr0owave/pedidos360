@@ -23,6 +23,7 @@ import { currentRoles } from './core/role.guard';
           <a routerLink="/catalog" routerLinkActive="on" *ngIf="can('Admin','Operador')">Catálogo</a>
           <a routerLink="/reports" routerLinkActive="on" *ngIf="can('Admin')">Reportes</a>
           <a routerLink="/audit" routerLinkActive="on" *ngIf="can('Admin','Auditor')">Auditoría</a>
+          <a routerLink="/mensajeria" routerLinkActive="on" *ngIf="can('Admin')">Mensajería</a>
           <a routerLink="/diagnostico" routerLinkActive="on">Diagnóstico</a>
         </nav>
 
@@ -96,7 +97,7 @@ export class AppComponent {
   private refresh(): void {
     const acc = this.msal.instance.getActiveAccount() ?? this.msal.instance.getAllAccounts()[0];
     this.email.set(acc?.username ?? '');
-    this.roles.set(currentRoles(this.msal));
+    currentRoles(this.msal).subscribe(r => this.roles.set(r));
   }
 
   can(...allowed: string[]): boolean {

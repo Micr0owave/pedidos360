@@ -18,6 +18,12 @@ import { environment } from '../../environments/environment';
           movimientos puedes hacer sobre ellos.
         </p>
         <button type="button" class="btn entrar" (click)="login()">
+          <svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true" style="margin-right:.5rem">
+            <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+            <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+            <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+            <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+          </svg>
           Iniciar sesión con Microsoft
         </button>
         <p class="hint">Autenticación gestionada por Microsoft Entra ID.</p>

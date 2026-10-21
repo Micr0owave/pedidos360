@@ -82,3 +82,48 @@ Authorization: Bearer {{token}}
 ### 14. Ver que rol reconoce el backend en tu token
 GET {{bff}}/api/me
 Authorization: Bearer {{token}}
+
+### ===== EP3: administrador de RabbitMQ (mqadmin, puerto 8086) =====
+### En perfil local no pide token. Desplegado exige rol ADMIN: agrega "Authorization: Bearer {{token}}".
+
+### 15. Crear una cola
+POST http://localhost:8086/api/queues
+Content-Type: application/json
+
+{ "name": "q.cmd.prueba", "durable": true, "deadLetterExchange": "cmd.dead.dlx", "deadLetterRoutingKey": "prueba" }
+
+### 16. Consultar la cola (mensajes y consumidores)
+GET http://localhost:8086/api/queues/q.cmd.prueba
+
+### 17. Crear un exchange
+POST http://localhost:8086/api/exchanges
+Content-Type: application/json
+
+{ "name": "cmd.prueba", "type": "DIRECT" }
+
+### 18. Crear un binding exchange -> cola
+POST http://localhost:8086/api/bindings
+Content-Type: application/json
+
+{ "exchange": "cmd.prueba", "destination": "q.cmd.prueba", "destinationType": "QUEUE", "routingKey": "prueba" }
+
+### 19. Eliminar el binding
+DELETE http://localhost:8086/api/bindings?exchange=cmd.prueba&destination=q.cmd.prueba&destinationType=QUEUE&routingKey=prueba
+
+### 20. Eliminar exchange y cola
+DELETE http://localhost:8086/api/exchanges/cmd.prueba
+
+###
+DELETE http://localhost:8086/api/queues/q.cmd.prueba
+
+### 21. Validacion: nombre vacio -> 400
+POST http://localhost:8086/api/queues
+Content-Type: application/json
+
+{ "name": "" }
+
+### 22. Validacion: prefijo reservado -> 400
+POST http://localhost:8086/api/queues
+Content-Type: application/json
+
+{ "name": "amq.secreta" }

@@ -71,7 +71,7 @@ export class DashboardComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.roles.set(currentRoles(this.msal));
+    currentRoles(this.msal).subscribe(r => this.roles.set(r));
     const acc = this.msal.instance.getActiveAccount() ?? this.msal.instance.getAllAccounts()[0];
     this.nombre.set(acc?.username ?? '');
 

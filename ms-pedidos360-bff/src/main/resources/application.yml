@@ -29,6 +29,10 @@ p360:
     base-url: ${AUDIT_BASE_URL:http://localhost:8084}
   report:
     base-url: ${REPORT_BASE_URL:http://localhost:8085}
+  mqadmin:
+    base-url: ${MQADMIN_BASE_URL:http://localhost:8086}
+  notify:
+    base-url: ${NOTIFY_BASE_URL:http://localhost:8083}
 
 springdoc:
   swagger-ui:
